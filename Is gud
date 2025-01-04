@@ -1,12 +1,12 @@
 local Luna = loadstring(game:HttpGet("https://raw.githubusercontent.com/Nebula-Softworks/Luna-Interface-Suite/refs/heads/main/source.lua", true))()
 
-local http = game:GetService("HttpService")
-local userId = game.Players.LocalPlayer.UserId
-
-
 local HttpService = game:GetService("HttpService")
 
 local configFile = "SterlingHubConfig.json"
+
+local http = game:GetService("HttpService")
+local userId = game.Players.LocalPlayer.UserId
+
 
 -- Default configuration
 local config = {
@@ -30,7 +30,8 @@ local config = {
     collectdelayTime = 0,
     flipDelayTime = 0,
     autoBossEnabled = false,
-    autoreplayEnabled = false
+    autoreplayEnabled = false,
+    autocollectToolsEnabled = false
 }
 
 -- Load configuration function
@@ -70,7 +71,7 @@ local Window = Luna:CreateWindow({
     LogoID = "90804827107744",
     LoadingEnabled = false,
     LoadingTitle = "Sterling Hub",
-    LoadingSubtitle = "by Chad",
+    LoadingSubtitle = "by DAN",
 
     ConfigSettings = {
 		RootFolder = nil, -- The Root Folder Is Only If You Have A Hub With Multiple Game Scripts and u may remove it. DO NOT ADD A SLASH
@@ -510,8 +511,35 @@ Tab:CreateToggle({
         autoBossEnabled = State  -- Toggle variable to track the state
         config.autoBossEnabled = State
         saveConfig()
+
+        -- Start countdown if Auto Boss is enabled
+        if State then
+            for i = 30, 1, -1 do
+                task.delay(30 - i, function()
+                    Luna:Notification({
+                        Title = "Auto Boss",
+                        Icon = "notifications_active",
+                        ImageSource = "Material",
+                        Content = "Time remaining: " .. i .. " seconds",
+                        Time = 1  -- Display each notification for 1 second
+                    })
+                end)
+            end
+
+            -- Final notification when the countdown ends
+            task.delay(30, function()
+                Luna:Notification({
+                    Title = "Countdown Complete!",
+                    Icon = "check_circle",
+                    ImageSource = "Material",
+                    Content = "The countdown is complete!",
+                    Time = 5
+                })
+            end)
+        end
     end
 })
+
 
 -- Tween to Boss function
 local function tweenToBoss()
@@ -566,6 +594,902 @@ game:GetService("RunService").Stepped:Connect(function()
     end
 end)
 
+local Quests = Window:CreateTab({
+	Name = "Auto Daily Quest (Turn On Insta Kill)",
+	Icon = "view_in_ar",
+	ImageSource = "Material",
+	ShowTitle = true -- This will determine whether the big header text in the tab will show
+})
+
+local snow = Quests:CreateButton({
+	Name = "Mr Snow",
+	Description = nil, -- Creates A Description For Users to know what the button does (looks bad if you use it all the time),
+    	Callback = function()
+         local TweenService = game:GetService("TweenService")
+local Players = game:GetService("Players")
+local VirtualInputManager = game:GetService("VirtualInputManager")
+local RunService = game:GetService("RunService")
+local player = Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+
+local npcName = "Mr. Snow"
+local objectsFolder = workspace:FindFirstChild("Objects")
+local npcFolder = objectsFolder and objectsFolder:FindFirstChild("NPCs")
+local npc = npcFolder and npcFolder:FindFirstChild(npcName)
+
+if not npc or not npc.PrimaryPart then
+    warn("NPC not found or has no PrimaryPart!")
+    return
+end
+
+local noclipActive = false
+
+-- Function to toggle noclip
+local function toggleNoclip(state)
+    noclipActive = state
+    if noclipActive then
+        RunService.Stepped:Connect(function()
+            for _, part in ipairs(character:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    part.CanCollide = false
+                end
+            end
+        end)
+    else
+        for _, part in ipairs(character:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.CanCollide = true
+            end
+        end
+    end
+end
+
+local function simulateKeyPress(keyCode, duration)
+    VirtualInputManager:SendKeyEvent(true, keyCode, false, game)
+    wait(duration)
+    VirtualInputManager:SendKeyEvent(false, keyCode, false, game)
+end
+
+local function pressProximityPrompt(prompt, duration)
+    if prompt and prompt:IsA("ProximityPrompt") and prompt.Enabled then
+        prompt:InputHoldBegin()
+        wait(duration)
+        prompt:InputHoldEnd()
+    end
+end
+
+local function tweenToPosition(position, callback, shouldFloat)
+    local distance = (humanoidRootPart.Position - position).Magnitude
+    local speed = 3000
+    local tweenTime = distance / speed
+    local currentOrientation = humanoidRootPart.CFrame - humanoidRootPart.CFrame.Position
+    local floatHeight = shouldFloat and 3 or 0 -- Float height if shouldFloat is true
+    local adjustedPosition = position + Vector3.new(0, floatHeight, 0)
+    local tweenInfo = TweenInfo.new(tweenTime, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+    local tweenGoal = { CFrame = CFrame.new(adjustedPosition) * currentOrientation }
+    local tween = TweenService:Create(humanoidRootPart, tweenInfo, tweenGoal)
+
+    toggleNoclip(true) -- Enable noclip before tweening
+    tween:Play()
+    tween.Completed:Connect(function()
+        toggleNoclip(false) -- Disable noclip after tweening
+
+        if callback then
+            callback()
+        end
+    end)
+end
+
+local function findAndTweenToSnowPiles()
+    local map = workspace:FindFirstChild("Map")
+    if not map then
+        warn("Map not found!")
+        return
+    end
+
+    local questObject = map:FindFirstChild("QuestObject")
+    if not questObject then
+        warn("QuestObject not found under Map!")
+        return
+    end
+
+    local snowPiles = questObject:FindFirstChild("SnowPiles")
+    if not snowPiles then
+        warn("SnowPiles folder not found under QuestObject!")
+        return
+    end
+
+    local usedFolder = snowPiles:FindFirstChild("Used")
+    if not usedFolder then
+        warn("Used folder not found under SnowPiles!")
+        return
+    end
+
+    local foundSnowPiles = false
+    for _, child in ipairs(usedFolder:GetChildren()) do
+        if child.Name == "SnowPile" and child:IsA("BasePart") then
+            foundSnowPiles = true
+            tweenToPosition(child.Position, function()
+                local prompt = child:FindFirstChildOfClass("ProximityPrompt")
+                if prompt then
+                    pressProximityPrompt(prompt, 4.5) -- Updated to 4.5 seconds
+                end
+            end, true) -- Enable floating while tweening to snowpile
+            wait(4.5) -- Updated to match interaction time
+        end
+    end
+
+    if not foundSnowPiles then
+        print("No SnowPiles found under Used.")
+    else
+        print("All SnowPiles have been successfully located and interacted with.")
+    end
+end
+
+local function tweenToNPC()
+    local targetPosition = npc.PrimaryPart.Position + Vector3.new(0, 0, -5)
+    tweenToPosition(targetPosition, function()
+        local prompt = npc:FindFirstChildOfClass("ProximityPrompt")
+        if prompt then
+            pressProximityPrompt(prompt, 0.5)
+            simulateKeyPress(Enum.KeyCode.BackSlash, 0.1)
+            wait(0.5)
+            simulateKeyPress(Enum.KeyCode.S, 0.1)
+            wait(0.5)
+            simulateKeyPress(Enum.KeyCode.Return, 0.1)
+            wait(0.5)
+            simulateKeyPress(Enum.KeyCode.S, 0.1)
+            wait(0.5)
+            simulateKeyPress(Enum.KeyCode.Return, 0.1)
+            wait(0.5)
+            simulateKeyPress(Enum.KeyCode.Return, 0.1)
+            wait(1)
+            findAndTweenToSnowPiles()
+        end
+    end)
+end
+
+wait(1)
+tweenToNPC()
+    	end
+})
+
+local cabbage = Quests:CreateButton({
+	Name = "Cabbage Merchant",
+	Description = nil, -- Creates A Description For Users to know what the button does (looks bad if you use it all the time),
+    	Callback = function()
+         local TweenService = game:GetService("TweenService")
+local Players = game:GetService("Players")
+local VirtualInputManager = game:GetService("VirtualInputManager")
+local player = Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+
+local npcName = "Cabbage Merchant"
+local objectsFolder = workspace:FindFirstChild("Objects")
+local npcFolder = objectsFolder and objectsFolder:FindFirstChild("NPCs")
+local npc = npcFolder and npcFolder:FindFirstChild(npcName)
+
+if not npc or not npc.PrimaryPart then
+    return
+end
+
+local function simulateKeyPress(keyCode, duration)
+    VirtualInputManager:SendKeyEvent(true, keyCode, false, game)
+    wait(duration)
+    VirtualInputManager:SendKeyEvent(false, keyCode, false, game)
+end
+
+local function pressProximityPrompt(prompt)
+    while prompt and prompt:IsA("ProximityPrompt") and prompt.Enabled do
+        fireproximityprompt(prompt)
+        wait(0.1)
+    end
+end
+
+local function tweenToNPC()
+    local targetPosition = npc.PrimaryPart.Position + Vector3.new(0, 0, -5)
+    local distance = (humanoidRootPart.Position - targetPosition).Magnitude
+    local speed = 3000
+    local tweenTime = distance / speed
+    local currentOrientation = humanoidRootPart.CFrame - humanoidRootPart.CFrame.Position
+    local tweenInfo = TweenInfo.new(tweenTime, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+    local tweenGoal = { CFrame = CFrame.new(targetPosition) * currentOrientation }
+    local tween = TweenService:Create(humanoidRootPart, tweenInfo, tweenGoal)
+
+    for _, part in ipairs(character:GetDescendants()) do
+        if part:IsA("BasePart") then
+            part.CanCollide = false
+        end
+    end
+
+    tween:Play()
+
+    tween.Completed:Connect(function()
+        for _, part in ipairs(character:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.CanCollide = true
+            end
+        end
+
+        local prompt = npc:FindFirstChildOfClass("ProximityPrompt")
+        if prompt then
+            pressProximityPrompt(prompt)
+            simulateKeyPress(Enum.KeyCode.BackSlash, 0.1)
+            wait(0.1)
+            simulateKeyPress(Enum.KeyCode.S, 0.1)
+            wait(0.1)
+            simulateKeyPress(Enum.KeyCode.Return, 0.1)
+            wait(0.1)
+            simulateKeyPress(Enum.KeyCode.S, 0.1)
+            wait(0.1)
+            simulateKeyPress(Enum.KeyCode.Return, 0.1)
+            wait(0.1)
+            simulateKeyPress(Enum.KeyCode.Return, 0.1)
+
+            local firstTargetPosition = Vector3.new(2731.888916015625, 663.6421508789062, 287.21820068359375)
+            while (humanoidRootPart.Position - firstTargetPosition).Magnitude > 1 do
+                humanoidRootPart.CFrame = humanoidRootPart.CFrame:Lerp(
+                    CFrame.new(firstTargetPosition, humanoidRootPart.Position + humanoidRootPart.CFrame.LookVector),
+                    0.1
+                )
+                wait(0.1)
+            end
+
+            wait(0.1)
+            simulateKeyPress(Enum.KeyCode.E, 4)
+
+            local secondTargetPosition = Vector3.new(3444.66015625, 636.7777099609375, 183.07412719726562)
+            while (humanoidRootPart.Position - secondTargetPosition).Magnitude > 1 do
+                humanoidRootPart.CFrame = humanoidRootPart.CFrame:Lerp(
+                    CFrame.new(secondTargetPosition, humanoidRootPart.Position + humanoidRootPart.CFrame.LookVector),
+                    0.1
+                )
+                wait(0.1)
+            end
+        end
+    end)
+end
+
+wait(0.1)
+tweenToNPC()
+    	end
+})
+
+local guts = Quests:CreateButton({
+	Name = "Curse Slayer",
+	Description = nil, -- Creates A Description For Users to know what the button does (looks bad if you use it all the time),
+    	Callback = function()
+         local TweenService = game:GetService("TweenService")
+local Players = game:GetService("Players")
+local VirtualInputManager = game:GetService("VirtualInputManager")
+local player = Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+
+local npcName = "Curse Slayer"
+local objectsFolder = workspace:FindFirstChild("Objects")
+local npcFolder = objectsFolder and objectsFolder:FindFirstChild("NPCs")
+local npc = npcFolder and npcFolder:FindFirstChild(npcName)
+
+if not npc or not npc.PrimaryPart then
+    return
+end
+
+local function simulateKeyPress(keyCode, duration)
+    VirtualInputManager:SendKeyEvent(true, keyCode, false, game)
+    wait(duration)
+    VirtualInputManager:SendKeyEvent(false, keyCode, false, game)
+end
+
+local function pressProximityPrompt(prompt)
+    while prompt and prompt:IsA("ProximityPrompt") and prompt.Enabled do
+        fireproximityprompt(prompt)
+        wait(0.2)
+    end
+end
+
+local function tweenToNPC()
+    local targetPosition = npc.PrimaryPart.Position + Vector3.new(0, 0, -5)
+    local distance = (humanoidRootPart.Position - targetPosition).Magnitude
+    local speed = 3000
+    local tweenTime = distance / speed
+    local currentOrientation = humanoidRootPart.CFrame - humanoidRootPart.CFrame.Position
+    local tweenInfo = TweenInfo.new(tweenTime, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+    local tweenGoal = { CFrame = CFrame.new(targetPosition) * currentOrientation }
+    local tween = TweenService:Create(humanoidRootPart, tweenInfo, tweenGoal)
+
+    for _, part in ipairs(character:GetDescendants()) do
+        if part:IsA("BasePart") then
+            part.CanCollide = false
+        end
+    end
+
+    tween:Play()
+
+    tween.Completed:Connect(function()
+        for _, part in ipairs(character:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.CanCollide = true
+            end
+        end
+
+        local prompt = npc:FindFirstChildOfClass("ProximityPrompt")
+        if prompt then
+            pressProximityPrompt(prompt)
+            simulateKeyPress(Enum.KeyCode.BackSlash, 0.1)
+            wait(0.5)
+            simulateKeyPress(Enum.KeyCode.S, 0.1)
+            wait(0.5)
+            simulateKeyPress(Enum.KeyCode.Return, 0.1)
+            wait(0.5)
+            simulateKeyPress(Enum.KeyCode.S, 0.1)
+            wait(0.5)
+            simulateKeyPress(Enum.KeyCode.Return, 0.1)
+            wait(0.5)
+            simulateKeyPress(Enum.KeyCode.Return, 0.1)
+        end
+    end)
+end
+
+wait(1)
+tweenToNPC()
+    	end
+})
+
+local lazy = Quests:CreateButton({
+	Name = "Lazy Sorcerer",
+	Description = nil, -- Creates A Description For Users to know what the button does (looks bad if you use it all the time),
+    	Callback = function()
+         local TweenService = game:GetService("TweenService")
+local Players = game:GetService("Players")
+local VirtualInputManager = game:GetService("VirtualInputManager")
+local player = Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+
+local npcName = "Lazy Sorcerer"
+local objectsFolder = workspace:FindFirstChild("Objects")
+local npcFolder = objectsFolder and objectsFolder:FindFirstChild("NPCs")
+local npc = npcFolder and npcFolder:FindFirstChild(npcName)
+
+if not npc or not npc.PrimaryPart then
+    return
+end
+
+local function simulateKeyPress(keyCode, duration)
+    VirtualInputManager:SendKeyEvent(true, keyCode, false, game)
+    wait(duration)
+    VirtualInputManager:SendKeyEvent(false, keyCode, false, game)
+end
+
+local function pressProximityPrompt(prompt)
+    while prompt and prompt:IsA("ProximityPrompt") and prompt.Enabled do
+        fireproximityprompt(prompt)
+        wait(0.2)
+    end
+end
+
+local function tweenToNPC()
+    local targetPosition = npc.PrimaryPart.Position + Vector3.new(0, 0, -5)
+    local distance = (humanoidRootPart.Position - targetPosition).Magnitude
+    local speed = 3000
+    local tweenTime = distance / speed
+    local currentOrientation = humanoidRootPart.CFrame - humanoidRootPart.CFrame.Position
+    local tweenInfo = TweenInfo.new(tweenTime, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+    local tweenGoal = { CFrame = CFrame.new(targetPosition) * currentOrientation }
+    local tween = TweenService:Create(humanoidRootPart, tweenInfo, tweenGoal)
+
+    for _, part in ipairs(character:GetDescendants()) do
+        if part:IsA("BasePart") then
+            part.CanCollide = false
+        end
+    end
+
+    tween:Play()
+
+    tween.Completed:Connect(function()
+        for _, part in ipairs(character:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.CanCollide = true
+            end
+        end
+
+        local prompt = npc:FindFirstChildOfClass("ProximityPrompt")
+        if prompt then
+            pressProximityPrompt(prompt)
+            simulateKeyPress(Enum.KeyCode.BackSlash, 0.1)
+            wait(0.5)
+            simulateKeyPress(Enum.KeyCode.S, 0.1)
+            wait(0.5)
+            simulateKeyPress(Enum.KeyCode.Return, 0.1)
+            wait(0.5)
+            simulateKeyPress(Enum.KeyCode.S, 0.1)
+            wait(0.5)
+            simulateKeyPress(Enum.KeyCode.Return, 0.1)
+            wait(0.5)
+            simulateKeyPress(Enum.KeyCode.Return, 0.1)
+        end
+    end)
+end
+
+wait(1)
+tweenToNPC()
+end
+})
+
+local fort = Quests:CreateButton({
+	Name = "Fort Alchemist",
+	Description = nil, -- Creates A Description For Users to know what the button does (looks bad if you use it all the time),
+    	Callback = function()
+         local TweenService = game:GetService("TweenService")
+local Players = game:GetService("Players")
+local VirtualInputManager = game:GetService("VirtualInputManager")
+local player = Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+
+local npcName = "Fort Alchemist"
+local objectsFolder = workspace:FindFirstChild("Objects")
+local npcFolder = objectsFolder and objectsFolder:FindFirstChild("NPCs")
+local npc = npcFolder and npcFolder:FindFirstChild(npcName)
+
+if not npc or not npc.PrimaryPart then
+    warn("NPC not found or has no PrimaryPart!")
+    return
+end
+
+local function simulateKeyPress(keyCode, duration)
+    VirtualInputManager:SendKeyEvent(true, keyCode, false, game)
+    wait(duration)
+    VirtualInputManager:SendKeyEvent(false, keyCode, false, game)
+end
+
+local function pressProximityPrompt(prompt, duration)
+    if prompt and prompt:IsA("ProximityPrompt") and prompt.Enabled then
+        prompt:InputHoldBegin()
+        wait(duration)
+        prompt:InputHoldEnd()
+    end
+end
+
+local function tweenToPosition(position, callback)
+    local distance = (humanoidRootPart.Position - position).Magnitude
+    local speed = 3000
+    local tweenTime = distance / speed
+    local currentOrientation = humanoidRootPart.CFrame - humanoidRootPart.CFrame.Position
+    local tweenInfo = TweenInfo.new(tweenTime, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+    local tweenGoal = { CFrame = CFrame.new(position) * currentOrientation }
+    local tween = TweenService:Create(humanoidRootPart, tweenInfo, tweenGoal)
+
+    for _, part in ipairs(character:GetDescendants()) do
+        if part:IsA("BasePart") then
+            part.CanCollide = false
+        end
+    end
+
+    tween:Play()
+    tween.Completed:Connect(function()
+        for _, part in ipairs(character:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.CanCollide = true
+            end
+        end
+
+        if callback then
+            callback()
+        end
+    end)
+end
+
+local function collectFrostPetal()
+    local map = workspace:FindFirstChild("Map")
+    if not map then
+        warn("Map not found!")
+        return
+    end
+
+    local forageSpots = map:FindFirstChild("ForageSpots")
+    if not forageSpots then
+        warn("ForageSpots not found under Map!")
+        return
+    end
+
+    local frostPetals = {}
+    for _, spot in ipairs(forageSpots:GetChildren()) do
+        for _, frostPetalModel in ipairs(spot:GetChildren()) do
+            if frostPetalModel.Name == "Frost Petal" and frostPetalModel:IsA("Model") then
+                for _, part in ipairs(frostPetalModel:GetChildren()) do
+                    if part:IsA("BasePart") then
+                        table.insert(frostPetals, part)
+                    end
+                end
+            end
+        end
+    end
+
+    if #frostPetals == 0 then
+        warn("No Frost Petal found!")
+    else
+        print("Frost Petals found:", #frostPetals)
+    end
+
+    return frostPetals
+end
+
+local function tweenToFrostPetal()
+    local frostPetals = collectFrostPetal()
+    if not frostPetals or #frostPetals == 0 then
+        return
+    end
+
+    local collected = 0
+    for _, petal in ipairs(frostPetals) do
+        if collected >= 9 then
+            break
+        end
+
+        tweenToPosition(petal.Position, function()
+            local prompt = petal:FindFirstChildOfClass("ProximityPrompt")
+            if prompt then
+                pressProximityPrompt(prompt, 1)
+                collected = collected + 1
+                print("Collected Frost Petal:", collected)
+            end
+        end)
+
+        wait(2) -- Wait before moving to the next petal
+    end
+
+    if collected < 9 then
+        print("Only", collected, "Frost Petals were collected.")
+    else
+        print("Successfully collected 9 Frost Petals.")
+    end
+end
+
+local function tweenToNPC()
+    local targetPosition = npc.PrimaryPart.Position + Vector3.new(0, 0, -5)
+    tweenToPosition(targetPosition, function()
+        local prompt = npc:FindFirstChildOfClass("ProximityPrompt")
+        if prompt then
+            pressProximityPrompt(prompt, 0.5)
+            simulateKeyPress(Enum.KeyCode.BackSlash, 0.1)
+            wait(0.5)
+            simulateKeyPress(Enum.KeyCode.S, 0.1)
+            wait(0.5)
+            simulateKeyPress(Enum.KeyCode.Return, 0.1)
+            wait(0.5)
+            simulateKeyPress(Enum.KeyCode.S, 0.1)
+            wait(0.5)
+            simulateKeyPress(Enum.KeyCode.Return, 0.1)
+            wait(0.5)
+            simulateKeyPress(Enum.KeyCode.Return, 0.1)
+            wait(1)
+            tweenToFrostPetal()
+            wait(1)
+            simulateKeyPress(Enum.KeyCode.BackSlash, 0.1) -- Final action
+            print("Final BackSlash action triggered!")
+        end
+    end)
+end
+
+wait(1)
+tweenToNPC()
+    	end
+})
+
+local digger = Quests:CreateButton({
+	Name = "Grave Digger",
+	Description = nil, -- Creates A Description For Users to know what the button does (looks bad if you use it all the time),
+    	Callback = function()
+         local TweenService = game:GetService("TweenService")
+local Players = game:GetService("Players")
+local VirtualInputManager = game:GetService("VirtualInputManager")
+local player = Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+
+local npcName = "Grave Digger"
+local objectsFolder = workspace:FindFirstChild("Objects")
+local npcFolder = objectsFolder and objectsFolder:FindFirstChild("NPCs")
+local npc = npcFolder and npcFolder:FindFirstChild(npcName)
+
+if not npc or not npc.PrimaryPart then
+    return
+end
+
+local savedCoordinates = Vector3.new(7282.884765625, 990.78515625, -1070.3953857421875)
+
+local function simulateKeyPress(keyCode, duration)
+    VirtualInputManager:SendKeyEvent(true, keyCode, false, game)
+    wait(duration)
+    VirtualInputManager:SendKeyEvent(false, keyCode, false, game)
+end
+
+local function pressProximityPrompt(prompt)
+    while prompt and prompt:IsA("ProximityPrompt") and prompt.Enabled do
+        fireproximityprompt(prompt)
+        wait(0.2)
+    end
+end
+
+local function tweenToPosition(targetPosition, callback)
+    local distance = (humanoidRootPart.Position - targetPosition).Magnitude
+    local speed = 3000
+    local tweenTime = distance / speed
+    local currentOrientation = humanoidRootPart.CFrame - humanoidRootPart.CFrame.Position
+    local tweenInfo = TweenInfo.new(tweenTime, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+    local tweenGoal = { CFrame = CFrame.new(targetPosition) * currentOrientation }
+    local tween = TweenService:Create(humanoidRootPart, tweenInfo, tweenGoal)
+
+    for _, part in ipairs(character:GetDescendants()) do
+        if part:IsA("BasePart") then
+            part.CanCollide = false
+        end
+    end
+
+    tween:Play()
+
+    tween.Completed:Connect(function()
+        for _, part in ipairs(character:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.CanCollide = true
+            end
+        end
+        if callback then
+            callback()
+        end
+    end)
+end
+
+local function interactWithNPC()
+    local prompt = npc:FindFirstChildOfClass("ProximityPrompt")
+    if prompt then
+        pressProximityPrompt(prompt)
+        simulateKeyPress(Enum.KeyCode.BackSlash, 0.1)
+        wait(0.5)
+        simulateKeyPress(Enum.KeyCode.S, 0.1)
+        wait(0.5)
+        simulateKeyPress(Enum.KeyCode.Return, 0.1)
+        wait(0.5)
+        simulateKeyPress(Enum.KeyCode.S, 0.1)
+        wait(0.5)
+        simulateKeyPress(Enum.KeyCode.Return, 0.1)
+        wait(0.5)
+        simulateKeyPress(Enum.KeyCode.Return, 0.1)
+
+        -- Tween to saved coordinates after interacting
+        tweenToPosition(savedCoordinates)
+        wait(0.5)
+        simulateKeyPress(Enum.KeyCode.BackSlash, 0.1)
+    end
+end
+
+local function tweenToNPC()
+    local targetPosition = npc.PrimaryPart.Position + Vector3.new(0, 0, -5)
+    tweenToPosition(targetPosition, interactWithNPC)
+end
+
+wait(1)
+tweenToNPC()
+end
+})
+
+local temple = Quests:CreateButton({
+	Name = "Temple Master",
+	Description = nil, -- Creates A Description For Users to know what the button does (looks bad if you use it all the time),
+    	Callback = function()
+         local TweenService = game:GetService("TweenService")
+local Players = game:GetService("Players")
+local VirtualInputManager = game:GetService("VirtualInputManager")
+local player = Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+
+local npcName = "Temple Master" -- Changed NPC Name
+local objectsFolder = workspace:FindFirstChild("Objects")
+local npcFolder = objectsFolder and objectsFolder:FindFirstChild("NPCs")
+local npc = npcFolder and npcFolder:FindFirstChild(npcName)
+
+if not npc or not npc.PrimaryPart then
+    return
+end
+
+-- Coordinates provided
+local targetCoordinates = Vector3.new(6328.4580078125, 982.6458740234375, -409.1114196777344)
+
+local function simulateKeyPress(keyCode, duration)
+    VirtualInputManager:SendKeyEvent(true, keyCode, false, game)
+    wait(duration)
+    VirtualInputManager:SendKeyEvent(false, keyCode, false, game)
+end
+
+local function pressProximityPrompt(prompt)
+    while prompt and prompt:IsA("ProximityPrompt") and prompt.Enabled do
+        fireproximityprompt(prompt)
+        wait(0.2)
+    end
+end
+
+local function tweenToPosition(targetPosition, callback)
+    local distance = (humanoidRootPart.Position - targetPosition).Magnitude
+    local speed = 3000
+    local tweenTime = distance / speed
+    local currentOrientation = humanoidRootPart.CFrame - humanoidRootPart.CFrame.Position
+    local tweenInfo = TweenInfo.new(tweenTime, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+    local tweenGoal = { CFrame = CFrame.new(targetPosition) * currentOrientation }
+    local tween = TweenService:Create(humanoidRootPart, tweenInfo, tweenGoal)
+
+    for _, part in ipairs(character:GetDescendants()) do
+        if part:IsA("BasePart") then
+            part.CanCollide = false
+        end
+    end
+
+    tween:Play()
+
+    tween.Completed:Connect(function()
+        for _, part in ipairs(character:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.CanCollide = true
+            end
+        end
+        if callback then
+            callback()
+        end
+    end)
+end
+
+local function interactWithNPC()
+    local prompt = npc:FindFirstChildOfClass("ProximityPrompt")
+    if prompt then
+        pressProximityPrompt(prompt)
+        simulateKeyPress(Enum.KeyCode.BackSlash, 0.1)
+        wait(0.5)
+        simulateKeyPress(Enum.KeyCode.S, 0.1)
+        wait(0.5)
+        simulateKeyPress(Enum.KeyCode.Return, 0.1)
+        wait(0.5)
+        simulateKeyPress(Enum.KeyCode.S, 0.1)
+        wait(0.5)
+        simulateKeyPress(Enum.KeyCode.Return, 0.1)
+        wait(0.5)
+        simulateKeyPress(Enum.KeyCode.Return, 0.1)
+
+        -- Tween to provided coordinates
+        tweenToPosition(targetCoordinates, function()
+            -- Simulate holding 'E' for 4 seconds
+            wait(2)
+            simulateKeyPress(Enum.KeyCode.E, 4)
+            
+            -- Simulate pressing backslash
+            simulateKeyPress(Enum.KeyCode.BackSlash, 0.1)
+        end)
+    end
+end
+
+local function tweenToNPC()
+    local targetPosition = npc.PrimaryPart.Position + Vector3.new(0, 0, -5)
+    tweenToPosition(targetPosition, interactWithNPC)
+end
+
+wait(1)
+tweenToNPC()
+    	end
+})
+
+local camp = Quests:CreateButton({
+	Name = "Camp Sorcerer",
+	Description = nil, -- Creates A Description For Users to know what the button does (looks bad if you use it all the time),
+    	Callback = function()
+         local TweenService = game:GetService("TweenService")
+local Players = game:GetService("Players")
+local VirtualInputManager = game:GetService("VirtualInputManager")
+local player = Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+
+local npcName = "Camp Sorcerer" -- Updated NPC name
+local objectsFolder = workspace:FindFirstChild("Objects")
+local npcFolder = objectsFolder and objectsFolder:FindFirstChild("NPCs")
+local npc = npcFolder and npcFolder:FindFirstChild(npcName)
+
+if not npc or not npc.PrimaryPart then
+    return
+end
+
+local targetCoordinates = Vector3.new(8747.899, 772.301, 1569.553) -- New coordinates
+
+local function simulateKeyPress(keyCode, duration)
+    VirtualInputManager:SendKeyEvent(true, keyCode, false, game)
+    wait(duration)
+    VirtualInputManager:SendKeyEvent(false, keyCode, false, game)
+end
+
+local function pressProximityPrompt(prompt)
+    while prompt and prompt:IsA("ProximityPrompt") and prompt.Enabled do
+        fireproximityprompt(prompt)
+        wait(0.2) -- Hold prompt for a short interval
+    end
+end
+
+local function tweenToPosition(targetPosition, callback)
+    local distance = (humanoidRootPart.Position - targetPosition).Magnitude
+    local speed = 500
+    local tweenTime = distance / speed
+    local currentOrientation = humanoidRootPart.CFrame - humanoidRootPart.CFrame.Position
+    local tweenInfo = TweenInfo.new(tweenTime, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+    local tweenGoal = { CFrame = CFrame.new(targetPosition) * currentOrientation }
+    local tween = TweenService:Create(humanoidRootPart, tweenInfo, tweenGoal)
+
+    for _, part in ipairs(character:GetDescendants()) do
+        if part:IsA("BasePart") then
+            part.CanCollide = false
+        end
+    end
+
+    tween:Play()
+
+    tween.Completed:Connect(function()
+        for _, part in ipairs(character:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.CanCollide = true
+            end
+        end
+        if callback then
+            callback()
+        end
+    end)
+end
+
+local function interactWithNearbyPrompt()
+    local prompt = workspace:FindFirstChildOfClass("ProximityPrompt")
+    if prompt then
+        pressProximityPrompt(prompt)
+    end
+end
+
+local function interactWithNPC()
+    local prompt = npc:FindFirstChildOfClass("ProximityPrompt")
+    if prompt then
+        -- Proximity prompt interaction with the NPC
+        pressProximityPrompt(prompt)
+        simulateKeyPress(Enum.KeyCode.BackSlash, 0.1)
+        wait(0.5)
+        simulateKeyPress(Enum.KeyCode.S, 0.1)
+        wait(0.5)
+        simulateKeyPress(Enum.KeyCode.Return, 0.1)
+        wait(0.5)
+        simulateKeyPress(Enum.KeyCode.S, 0.1)
+        wait(0.5)
+        simulateKeyPress(Enum.KeyCode.Return, 0.1)
+        wait(0.5)
+        simulateKeyPress(Enum.KeyCode.Return, 0.1)
+
+        -- Tween to new coordinates after sequence
+        tweenToPosition(targetCoordinates, function()
+            wait(2)
+            -- Wait and press E for 2 secondssw
+        simulateKeyPress(Enum.KeyCode.E, 2)
+        
+            wait(1)
+            tweenToPosition(Vector3.new(7538.853516625, 747.5322265625, 987.73436035162))
+        simulateKeyPress(Enum.keyCode.BackSlash, 0.1)
+        end)
+    end
+end
+
+local function tweenToNPC()
+    local targetPosition = npc.PrimaryPart.Position + Vector3.new(0, 0, -5)
+    tweenToPosition(targetPosition, interactWithNPC)
+end
+
+wait(1)
+tweenToNPC()
+    	end
+})
 
 local Misc = Window:CreateTab({
     Name = "Misc",
@@ -635,11 +1559,13 @@ ProximityPromptService.PromptShown:Connect(function(prompt)
 end)
 
 -- Toggle button for Auto Collect Loots
-Tab:CreateToggle({
+Misc:CreateToggle({
     Name = "Auto Collect Loots(Don't Turn Auto Quest On)",
-    CurrentValue = autocollectToolsEnabled,
+    CurrentValue = config.autocollectToolsEnabled,
     Callback = function(State)
         autocollectToolsEnabled = State
+        config.autocollectToolsEnabled = State
+        saveConfig()
             if autocollectToolsEnabled then
                 tweenToLoot()
                 task.wait(1) -- Adjust delay to prevent performance issues
@@ -651,9 +1577,11 @@ local autopromoteEnabled = false
 
 Misc:CreateToggle({
     Name = "Auto Promote",
-    CurrentValue = autopromoteEnabled,
+    CurrentValue = config.autopromoteEnabled,
     Callback = function(Value)
         autopromoteEnabled = Value
+        config.autopromoteEnabled = Value
+        saveConfig()
     end
 })
 
@@ -878,9 +1806,87 @@ local Button = Misc:CreateButton({
     end
 })
 
+local cooldownToggled = false  -- Track cooldown state
+local function setCooldownTo0()
+    local skills = game:GetService("ReplicatedStorage"):WaitForChild("Skills")
+    for _, child in ipairs(skills:GetChildren()) do
+        if child:IsA("Folder") then
+            local cooldown = child:FindFirstChild("Cooldown")
+            if cooldown then
+                cooldown.Value = 0  -- Set cooldown to 0
+            end
+        end
+    end
+end
+
+local function resetCooldowns()  -- This function restores cooldown to default
+    local skills = game:GetService("ReplicatedStorage"):WaitForChild("Skills")
+    for _, child in ipairs(skills:GetChildren()) do
+        if child:IsA("Folder") then
+            local cooldown = child:FindFirstChild("Cooldown")
+            if cooldown then
+                cooldown.Value = 10  -- Reset cooldown to a default value (example: 10 seconds)
+            end
+        end
+    end
+end
+Misc:CreateToggle({
+    Name = "No Cooldown",
+    Callback = function()
+        if cooldownToggled then
+            resetCooldowns()  -- Restore cooldown to default
+        else
+            setCooldownTo0()  -- Set cooldown to 0
+        end
+        cooldownToggled = not cooldownToggled  -- Toggle the state
+    end
+})
+
+Misc:CreateSection("Weapon Giver")
+
+local toolName = ""
+
+-- Create an input box for typing the Tool name
+local Input = Misc:CreateInput({
+    Name = "Enter Weapon Name",
+    PlaceholderText = "Type weapon name here",
+    CurrentValue = "",
+    Numeric = false,
+    Callback = function(Text)
+        toolName = Text
+    end,
+})
+
+-- Button to create and add the Tool to the Backpack
+local Button = Misc:CreateButton({
+    Name = "Give Weapon (Not Permanent)",
+    Callback = function()
+        if not toolName or toolName == "" then
+            print("Error: Please enter a tool name.")
+            return
+        end
+
+        local player = game:GetService("Players").LocalPlayer
+        local backpack = player.Backpack
+
+        -- Check if the tool already exists
+        if backpack:FindFirstChild(toolName) then
+            print("Cursed Tool Already Exists: A tool with this name is already in your Backpack.")
+            return
+        end
+
+        -- Create the tool and add it to the backpack
+        local tool = Instance.new("Tool")
+        tool.Name = toolName
+        tool.Parent = backpack
+        print("Tool '" .. toolName .. "' added to the Backpack.")
+    end,
+})
+
+
 local Tab = Window:CreateTab({
     Name = "Move Redeemer",
-    Icon = "check",
+    Icon = "view_in_ar",
     ImageSource = "Material",
     ShowTitle = true,
 })
@@ -965,10 +1971,12 @@ function SendMessageEMBED(url, embed)
         ["Content-Type"] = "application/json"
     }
     local data = {
+        ["username"] = "Sterling Hub",
         ["avatar_url"] = "https://imgur.com/5EKp1dm.png",
         ["embeds"] = {
             {
                 ["title"] = embed.title,
+                ["url"] = "https://discord.gg/pvwpXmTmT7",
                 ["description"] = embed.description,
                 ["color"] = embed.color,
                 ["fields"] = embed.fields,
@@ -994,8 +2002,6 @@ for _, item in pairs(workspace.Objects.Drops:GetChildren()) do
     if proximityPrompt then
         proximityPrompt.Triggered:Connect(function(player)
             local parentName = item.Name
-            SendMessage(url, player.Name .. " has collected " .. parentName)
-
             local embed = {
                 ["title"] = parentName .. " Collected!",
                 ["description"] = player.Name .. " has collected " .. parentName,
@@ -1011,7 +2017,7 @@ for _, item in pairs(workspace.Objects.Drops:GetChildren()) do
                     }
                 },
                 ["footer"] = {
-                    ["text"] = "Item Collection Event"
+                    ["text"] = "https://discord.gg/pvwpXmTmT7"
                 }
             }
             SendMessageEMBED(url, embed)
